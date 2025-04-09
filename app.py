@@ -42,22 +42,40 @@ if uploaded_file:
     contrast = st.sidebar.slider("Contrast", 0.5, 2.0, 1.0, 0.1)
     opacity = st.sidebar.slider("Opacity", 0.0, 1.0, 1.0, 0.05)
 
+    # Add individual sliders for filters that support scaling
+    if filter_type == "Blur":
+        blur_strength = st.sidebar.slider("Blur Strength", 1, 25, 7, 2)  # must be odd
+        if blur_strength % 2 == 0:
+            blur_strength += 1  # OpenCV requires odd kernel size
+
+    elif filter_type == "Sharpen":
+        sharpness_strength = st.sidebar.slider("Sharpen Strength", 0.0, 5.0, 1.0, 0.1)
+
+    elif filter_type == "Invert":
+        invert_strength = st.sidebar.slider("Invert Strength", 0.0, 1.0, 1.0, 0.05)
+
+    elif filter_type == "Grayscale":
+        grayscale_strength = st.sidebar.slider("Grayscale Mix", 0.0, 1.0, 1.0, 0.05)
+
     # Convert to OpenCV format
     img = np.array(image).astype(np.uint8)
 
     if filter_type == "Grayscale":
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        gray_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+        img = cv2.addWeighted(img, 1 - grayscale_strength, gray_rgb, grayscale_strength, 0)
 
     elif filter_type == "Invert":
-        img = cv2.bitwise_not(img)
+        inverted = cv2.bitwise_not(img)
+        img = cv2.addWeighted(img, 1 - invert_strength, inverted, invert_strength, 0)
 
     elif filter_type == "Blur":
-        img = cv2.GaussianBlur(img, (7, 7), 0)
+        img = cv2.GaussianBlur(img, (blur_strength, blur_strength), 0)
 
     elif filter_type == "Sharpen":
+        # Custom sharpening kernel with variable intensity
         kernel = np.array([[0, -1, 0],
-                           [-1, 5, -1],
+                           [-1, 5 + sharpness_strength, -1],
                            [0, -1, 0]])
         img = cv2.filter2D(img, -1, kernel)
 
