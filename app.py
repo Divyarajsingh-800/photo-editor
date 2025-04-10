@@ -30,6 +30,8 @@ st.title("📸 Photo Editor and Comparison")
 
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
+emoji_options = ["😀", "😍", "🔥", "👍", "💯", "🎉", "🚀", "😂"]
+
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     original = np.array(image)
@@ -40,6 +42,7 @@ if uploaded_file:
     contrast = st.sidebar.slider("Contrast", 0.5, 2.0, 1.0, 0.1)
     opacity = st.sidebar.slider("Opacity", 0.0, 1.0, 1.0, 0.05)
 
+    # Extra filter controls
     if filter_type == "Blur":
         blur_strength = st.sidebar.slider("Blur Strength", 1, 25, 7, 2)
         if blur_strength % 2 == 0:
@@ -61,6 +64,7 @@ if uploaded_file:
     elif filter_type == "Polaroid":
         polaroid_strength = st.sidebar.slider("Polaroid Strength", 0.0, 1.0, 1.0, 0.05)
 
+    # Crop Tool with Reset
     st.sidebar.header("✂️ Crop Tool")
     if 'crop_reset' not in st.session_state:
         st.session_state.crop_top = 0
@@ -82,30 +86,36 @@ if uploaded_file:
     crop_width = st.sidebar.number_input("Width", min_value=1, value=st.session_state.crop_width, key="crop_width")
     crop_height = st.sidebar.number_input("Height", min_value=1, value=st.session_state.crop_height, key="crop_height")
 
+    # Rotate & Flip
     st.sidebar.header("🔁 Rotate & Flip")
     rotate_angle = st.sidebar.slider("Rotate (°)", 0, 360, 0, 1)
     flip_horizontal = st.sidebar.checkbox("Flip Horizontally")
     flip_vertical = st.sidebar.checkbox("Flip Vertically")
 
+    # Resize
     st.sidebar.header("📏 Resize")
     resize_width = st.sidebar.number_input("New Width", min_value=1, value=image.width)
     resize_height = st.sidebar.number_input("New Height", min_value=1, value=image.height)
 
+    # Text Overlay
     st.sidebar.header("📝 Text Overlay")
     text_input = st.sidebar.text_input("Enter Text")
     font_size = st.sidebar.slider("Font Size", 10, 100, 30)
     text_x = st.sidebar.number_input("Text X Position", min_value=0, value=10)
     text_y = st.sidebar.number_input("Text Y Position", min_value=0, value=10)
 
+    # Emoji/Sticker Overlay
     st.sidebar.header("😎 Emoji Sticker")
-    emoji_input = st.sidebar.text_input("Enter Emoji")
+    emoji_input = st.sidebar.selectbox("Choose Emoji", ["None"] + emoji_options)
     emoji_x = st.sidebar.number_input("Emoji X Position", min_value=0, value=50)
     emoji_y = st.sidebar.number_input("Emoji Y Position", min_value=0, value=50)
 
+    # Border
     st.sidebar.header("🎨 Image Border")
     border_color = st.sidebar.color_picker("Border Color", "#FF5733")
     border_thickness = st.sidebar.slider("Border Thickness", 0, 50, 10)
 
+    # Auto Enhance
     st.sidebar.header("⚡ Auto Enhance")
     auto_enhance = st.sidebar.button("Auto Enhance (Brightness + Contrast)")
 
@@ -184,16 +194,9 @@ if uploaded_file:
             font = ImageFont.load_default()
         draw.text((text_x, text_y), text_input, font=font, fill=(255, 255, 255))
 
-    if emoji_input:
+    if emoji_input and emoji_input != "None":
         try:
-            font = ImageFont.truetype("seguiemj.ttf", font_size * 3)
+            font = ImageFont.truetype("arial.ttf", font_size * 3)
         except:
             font = ImageFont.load_default()
         draw.text((emoji_x, emoji_y), emoji_input, font=font, fill=(255, 255, 255))
-
-    st.image(edited, caption="Edited Image", use_column_width=True)
-
-    # Download button
-    buffered = BytesIO()
-    edited.save(buffered, format="PNG")
-    st.download_button("📥 Download Edited Image", data=buffered.getvalue(), file_name="edited_image.png", mime="image/png")
