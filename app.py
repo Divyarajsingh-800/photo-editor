@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 from io import BytesIO
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Photo Editor and Comparison", layout="centered")
 
@@ -34,7 +35,7 @@ if uploaded_file:
     original = np.array(image)
 
     st.sidebar.header("🎛️ Filters and Adjustments")
-    filter_type = st.sidebar.radio("Apply Filter", ["None", "Blur", "Sharpen", "Invert", "Grayscale"])
+    filter_type = st.sidebar.radio("Apply Filter", ["None", "Blur", "Sharpen", "Invert", "Grayscale", "Sepia", "Vintage", "Cool", "Warm", "Polaroid"])
     brightness = st.sidebar.slider("Brightness", 0.5, 2.0, 1.0, 0.1)
     contrast = st.sidebar.slider("Contrast", 0.5, 2.0, 1.0, 0.1)
     opacity = st.sidebar.slider("Opacity", 0.0, 1.0, 1.0, 0.05)
@@ -91,32 +92,54 @@ if uploaded_file:
     text_x = st.sidebar.number_input("Text X Position", min_value=0, value=10)
     text_y = st.sidebar.number_input("Text Y Position", min_value=0, value=10)
 
+    # Emoji/Sticker Overlay
+    st.sidebar.header("😎 Emoji Sticker")
+    emoji_input = st.sidebar.text_input("Enter Emoji")
+    emoji_x = st.sidebar.number_input("Emoji X Position", min_value=0, value=50)
+    emoji_y = st.sidebar.number_input("Emoji Y Position", min_value=0, value=50)
+
+    # Border
+    st.sidebar.header("🎨 Image Border")
+    border_color = st.sidebar.color_picker("Border Color", "#FF5733")
+    border_thickness = st.sidebar.slider("Border Thickness", 0, 50, 10)
+
     # Auto Enhance
     st.sidebar.header("⚡ Auto Enhance")
     auto_enhance = st.sidebar.button("Auto Enhance (Brightness + Contrast)")
 
-    # Apply Filters
     img = np.array(image).astype(np.uint8)
 
     if filter_type == "Grayscale":
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         gray_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
         img = cv2.addWeighted(img, 1 - grayscale_strength, gray_rgb, grayscale_strength, 0)
-
     elif filter_type == "Invert":
         inverted = cv2.bitwise_not(img)
         img = cv2.addWeighted(img, 1 - invert_strength, inverted, invert_strength, 0)
-
     elif filter_type == "Blur":
         img = cv2.GaussianBlur(img, (blur_strength, blur_strength), 0)
-
     elif filter_type == "Sharpen":
         kernel = np.array([[0, -1, 0], [-1, 5 + sharpness_strength, -1], [0, -1, 0]])
         img = cv2.filter2D(img, -1, kernel)
+    elif filter_type == "Sepia":
+        sepia_filter = np.array([[0.272, 0.534, 0.131],
+                                 [0.349, 0.686, 0.168],
+                                 [0.393, 0.769, 0.189]])
+        img = np.dot(img, sepia_filter.T)
+        img = np.clip(img, 0, 255).astype(np.uint8)
+    elif filter_type == "Vintage":
+        img = cv2.applyColorMap(img, cv2.COLORMAP_PINK)
+    elif filter_type == "Cool":
+        cool_filter = np.array([0, 50, 100], dtype=np.uint8)
+        img = cv2.add(img, cool_filter)
+    elif filter_type == "Warm":
+        warm_filter = np.array([50, 25, 0], dtype=np.uint8)
+        img = cv2.add(img, warm_filter)
+    elif filter_type == "Polaroid":
+        img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
 
     edited = Image.fromarray(img)
 
-    # Brightness & Contrast
     if auto_enhance:
         edited = ImageEnhance.Brightness(edited).enhance(1.2)
         edited = ImageEnhance.Contrast(edited).enhance(1.2)
@@ -147,14 +170,30 @@ if uploaded_file:
         background = Image.new("RGB", edited.size, (0, 0, 0))
         edited = Image.blend(background, edited, opacity)
 
+    # Add border
+    if border_thickness > 0:
+        border_color_rgb = tuple(int(border_color.lstrip("#")[i:i+2], 16) for i in (0, 2 ,4))
+        new_w, new_h = edited.size[0] + border_thickness * 2, edited.size[1] + border_thickness * 2
+        bordered = Image.new("RGB", (new_w, new_h), border_color_rgb)
+        bordered.paste(edited, (border_thickness, border_thickness))
+        edited = bordered
+
     # Text
+    draw = ImageDraw.Draw(edited)
     if text_input:
-        draw = ImageDraw.Draw(edited)
         try:
             font = ImageFont.truetype("arial.ttf", font_size * 3)
         except:
             font = ImageFont.load_default()
         draw.text((text_x, text_y), text_input, font=font, fill=(255, 255, 255))
+
+    # Emoji
+    if emoji_input:
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size * 3)
+        except:
+            font = ImageFont.load_default()
+        draw.text((emoji_x, emoji_y), emoji_input, font=font, fill=(255, 255, 255))
 
     # Display side-by-side
     col1, col2 = st.columns(2)
@@ -164,6 +203,16 @@ if uploaded_file:
     with col2:
         st.subheader("🎨 Edited")
         st.image(edited, use_container_width=True)
+
+    # Histogram
+    st.sidebar.header("📊 RGB Histogram")
+    fig, ax = plt.subplots()
+    red, green, blue = edited.split()
+    ax.hist(np.array(red).flatten(), bins=256, color='red', alpha=0.5, label='Red')
+    ax.hist(np.array(green).flatten(), bins=256, color='green', alpha=0.5, label='Green')
+    ax.hist(np.array(blue).flatten(), bins=256, color='blue', alpha=0.5, label='Blue')
+    ax.legend()
+    st.sidebar.pyplot(fig)
 
     # Download
     buffer = BytesIO()
