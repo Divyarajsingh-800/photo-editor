@@ -51,6 +51,16 @@ if uploaded_file:
         invert_strength = st.sidebar.slider("Invert Strength", 0.0, 1.0, 1.0, 0.05)
     elif filter_type == "Grayscale":
         grayscale_strength = st.sidebar.slider("Grayscale Mix", 0.0, 1.0, 1.0, 0.05)
+    elif filter_type == "Sepia":
+        sepia_strength = st.sidebar.slider("Sepia Strength", 0.0, 1.0, 1.0, 0.05)
+    elif filter_type == "Vintage":
+        vintage_strength = st.sidebar.slider("Vintage Strength", 0.0, 1.0, 1.0, 0.05)
+    elif filter_type == "Cool":
+        cool_strength = st.sidebar.slider("Cool Strength", 0.0, 1.0, 1.0, 0.05)
+    elif filter_type == "Warm":
+        warm_strength = st.sidebar.slider("Warm Strength", 0.0, 1.0, 1.0, 0.05)
+    elif filter_type == "Polaroid":
+        polaroid_strength = st.sidebar.slider("Polaroid Strength", 0.0, 1.0, 1.0, 0.05)
 
     # Crop Tool with Reset
     st.sidebar.header("✂️ Crop Tool")
@@ -125,18 +135,20 @@ if uploaded_file:
         sepia_filter = np.array([[0.272, 0.534, 0.131],
                                  [0.349, 0.686, 0.168],
                                  [0.393, 0.769, 0.189]])
-        img = np.dot(img, sepia_filter.T)
-        img = np.clip(img, 0, 255).astype(np.uint8)
+        sepia_img = np.dot(img, sepia_filter.T)
+        img = cv2.addWeighted(img, 1 - sepia_strength, np.clip(sepia_img, 0, 255).astype(np.uint8), sepia_strength, 0)
     elif filter_type == "Vintage":
-        img = cv2.applyColorMap(img, cv2.COLORMAP_PINK)
+        vintage_img = cv2.applyColorMap(img, cv2.COLORMAP_PINK)
+        img = cv2.addWeighted(img, 1 - vintage_strength, vintage_img, vintage_strength, 0)
     elif filter_type == "Cool":
         cool_filter = np.array([0, 50, 100], dtype=np.uint8)
-        img = cv2.add(img, cool_filter)
+        img = cv2.addWeighted(img, 1 - cool_strength, cv2.add(img, cool_filter), cool_strength, 0)
     elif filter_type == "Warm":
         warm_filter = np.array([50, 25, 0], dtype=np.uint8)
-        img = cv2.add(img, warm_filter)
+        img = cv2.addWeighted(img, 1 - warm_strength, cv2.add(img, warm_filter), warm_strength, 0)
     elif filter_type == "Polaroid":
-        img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
+        polaroid_img = cv2.applyColorMap(img, cv2.COLORMAP_OCEAN)
+        img = cv2.addWeighted(img, 1 - polaroid_strength, polaroid_img, polaroid_strength, 0)
 
     edited = Image.fromarray(img)
 
@@ -147,30 +159,24 @@ if uploaded_file:
         edited = ImageEnhance.Brightness(edited).enhance(brightness)
         edited = ImageEnhance.Contrast(edited).enhance(contrast)
 
-    # Resize
     edited = edited.resize((resize_width, resize_height))
 
-    # Crop
     right = crop_left + crop_width
     bottom = crop_top + crop_height
     edited = edited.crop((crop_left, crop_top, right, bottom))
 
-    # Rotate
     if rotate_angle != 0:
         edited = edited.rotate(rotate_angle, expand=True)
 
-    # Flip
     if flip_horizontal:
         edited = edited.transpose(Image.FLIP_LEFT_RIGHT)
     if flip_vertical:
         edited = edited.transpose(Image.FLIP_TOP_BOTTOM)
 
-    # Opacity
     if opacity < 1.0:
         background = Image.new("RGB", edited.size, (0, 0, 0))
         edited = Image.blend(background, edited, opacity)
 
-    # Add border
     if border_thickness > 0:
         border_color_rgb = tuple(int(border_color.lstrip("#")[i:i+2], 16) for i in (0, 2 ,4))
         new_w, new_h = edited.size[0] + border_thickness * 2, edited.size[1] + border_thickness * 2
@@ -178,7 +184,6 @@ if uploaded_file:
         bordered.paste(edited, (border_thickness, border_thickness))
         edited = bordered
 
-    # Text
     draw = ImageDraw.Draw(edited)
     if text_input:
         try:
@@ -187,7 +192,6 @@ if uploaded_file:
             font = ImageFont.load_default()
         draw.text((text_x, text_y), text_input, font=font, fill=(255, 255, 255))
 
-    # Emoji
     if emoji_input:
         try:
             font = ImageFont.truetype("arial.ttf", font_size * 3)
@@ -195,7 +199,6 @@ if uploaded_file:
             font = ImageFont.load_default()
         draw.text((emoji_x, emoji_y), emoji_input, font=font, fill=(255, 255, 255))
 
-    # Display side-by-side
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("🟢 Original")
@@ -204,7 +207,6 @@ if uploaded_file:
         st.subheader("🎨 Edited")
         st.image(edited, use_container_width=True)
 
-    # Histogram
     st.sidebar.header("📊 RGB Histogram")
     fig, ax = plt.subplots()
     red, green, blue = edited.split()
@@ -214,7 +216,6 @@ if uploaded_file:
     ax.legend()
     st.sidebar.pyplot(fig)
 
-    # Download
     buffer = BytesIO()
     edited.save(buffer, format="PNG")
     st.download_button("Download Edited Image", data=buffer.getvalue(), file_name="edited_image.png", mime="image/png")
