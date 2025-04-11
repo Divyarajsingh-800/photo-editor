@@ -38,7 +38,6 @@ if uploaded_file:
     contrast = st.sidebar.slider("Contrast", 0.5, 2.0, 1.0, 0.1)
     opacity = st.sidebar.slider("Opacity", 0.0, 1.0, 1.0, 0.05)
 
-    # Extra filter sliders
     if filter_type == "Blur":
         blur_strength = st.sidebar.slider("Blur Strength", 1, 25, 7, 2)
         if blur_strength % 2 == 0:
@@ -137,6 +136,7 @@ if uploaded_file:
         mapped = cv2.applyColorMap(img, cv2.COLORMAP_PINK)
         return cv2.addWeighted(img, 1 - strength, mapped, strength, 0)
 
+    # Apply selected filter
     if filter_type == "Grayscale":
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         gray_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
@@ -160,6 +160,7 @@ if uploaded_file:
     elif filter_type == "Polaroid":
         img = apply_polaroid(img, filter_strength)
 
+    # Convert back to PIL
     edited = Image.fromarray(img)
 
     if auto_enhance:
@@ -169,6 +170,7 @@ if uploaded_file:
         edited = ImageEnhance.Brightness(edited).enhance(brightness)
         edited = ImageEnhance.Contrast(edited).enhance(contrast)
 
+    # Resize, Crop, Rotate, Flip
     edited = edited.resize((resize_width, resize_height))
     right = crop_left + crop_width
     bottom = crop_top + crop_height
@@ -185,23 +187,25 @@ if uploaded_file:
         background = Image.new("RGB", edited.size, (0, 0, 0))
         edited = Image.blend(background, edited, opacity)
 
+    # Add text
     draw = ImageDraw.Draw(edited)
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
     if text_input:
-        try:
-            font = ImageFont.truetype("arial.ttf", font_size * 3)
-        except:
-            font = ImageFont.load_default()
         draw.text((text_x, text_y), text_input, font=font, fill=(255, 255, 255))
-
     if emoji_input:
-        draw.text((emoji_x, emoji_y), emoji_input, font=ImageFont.truetype("arial.ttf", font_size), fill=(255, 255, 255))
+        draw.text((emoji_x, emoji_y), emoji_input, font=font, fill=(255, 255, 255))
 
+    # Add border
     if add_border:
         border = border_thickness
         bordered = Image.new("RGB", (edited.width + border * 2, edited.height + border * 2), border_color)
         bordered.paste(edited, (border, border))
         edited = bordered
 
+    # Display original and edited
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("🟢 Original")
@@ -210,6 +214,7 @@ if uploaded_file:
         st.subheader("🎨 Edited")
         st.image(edited, use_container_width=True)
 
+    # Histogram
     st.sidebar.header("📊 RGB Histogram")
     fig, ax = plt.subplots()
     channels = ['r', 'g', 'b']
@@ -221,17 +226,12 @@ if uploaded_file:
     ax.set_title("RGB Histogram")
     st.sidebar.pyplot(fig)
 
+    # Download button
     buffer = BytesIO()
     edited.save(buffer, format="PNG")
-    st.download_button("Download Edited Image", data=buffer.getvalue(), file_name="edited_image.png", mime="image/png")
-    # Footer
-st.markdown(
-    """
-    <div style='position: fixed; bottom: 10px; right: 10px; font-size: 14px; color: gray;'>
-        DEVELOPED BY DIVYA RAJ SINGH
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-   
+    st.download_button(
+        label="⬇️ Download Edited Image",
+        data=buffer.getvalue(),
+        file_name="edited_image.png",
+        mime="image/png"
+    )
