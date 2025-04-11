@@ -224,3 +224,12 @@ if uploaded_file:
     buffer = BytesIO()
     edited.save(buffer, format="PNG")
     st.download_button("Download Edited Image", data=buffer.getvalue(), file_name="edited_image.png", mime="image/png")
+    # Footer
+st.markdown(
+    """
+    <div style='position: fixed; bottom: 10px; right: 10px; font-size: 14px; color: gray;'>
+        DEVELOPED BY DIVYA RAJ SINGH
+    </div>
+    """,
+    unsafe_allow_html=True
+)
