@@ -5,7 +5,7 @@ from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 from io import BytesIO
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Photo Editor and Comparison", layout="centered")
+st.set_page_config(page_title="Photo Editor and Comparison made by Divya Raj Singh", layout="centered")
 
 # Custom CSS
 st.markdown("""
